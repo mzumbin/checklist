@@ -80,14 +80,14 @@ object ValidField {
 }
 
 trait Render[-T] {
-  def render( value:T): Text.TypedTag[String]
+  def render( value:T): Seq[Modifier]
 }
 
 object Render {
-  def render[T](field: T)(implicit render: Render[T]): Text.TypedTag[String] ={
+  def render[T](field: T)(implicit render: Render[T]): Seq[Modifier] ={
     render.render(field)
   }
-  def renderField(field: Field): Text.TypedTag[String] = {
+  def renderField(field: Field): Seq[Modifier] = {
     field match {
       case textField: TextField => render(textField)
       case radio:Radio => render(radio)
@@ -96,23 +96,23 @@ object Render {
       case checkBoxList: CheckBoxList => render(checkBoxList)
     }
   }
-  implicit val renderTextField: Render[TextField] = textField => input(`type` := "text", placeholder := textField.label, readonly)
+  implicit val renderTextField: Render[TextField] = textField => Seq( input(`type` := "text", placeholder := textField.label, readonly))
   implicit val renderCheckBox: Render[CheckBox] = checkBox => {
     val isChecked = if (checkBox.selected)Some(checked) else None
-    div(
+    Seq(
       input( `type`:= "checkbox", isChecked, readonly),
       label(`for` := checkBox.label )(checkBox.label)
     )
   }
   implicit val renderCheckBoxList: Render[CheckBoxList] = checkBoxList => {
-    div(
-      p(checkBoxList.label),
-      render(checkBoxList.checkBoxes)
-    )
+
+      p(checkBoxList.label)::
+      render(checkBoxList.checkBoxes).toList
+
   }
   implicit val renderRadio: Render[Radio] = radio => {
     val isChecked = if (radio.selected) Some(checked) else None
-    div(
+    Seq(
       input( `type` := "radio", isChecked, readonly),
       label(`for` := radio.label )(radio.label),
       br
@@ -120,10 +120,10 @@ object Render {
   }
   import scala.language.implicitConversions
   implicit def listRender[T](implicit render: Render[T] ): Render[Seq[T]] = {
-    fields => p(fields.map(render.render))
+    fields => fields.flatMap(render.render)
   }
   implicit val renderRadioList: Render[RadioList] = (radioList)=> {
-    div(
+    Seq(
       p(radioList.label),
       render(radioList.radioList)
     )
@@ -133,7 +133,7 @@ object Render {
 
 object Test {
 
-  def mainn(args: Array[String]): Unit = {
+  def main(args: Array[String]): Unit = {
     val document = Document("1","me",
       Seq(
         TextField(value = "", required = true, label = "Nome"),
